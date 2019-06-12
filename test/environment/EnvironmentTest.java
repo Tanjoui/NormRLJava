@@ -55,5 +55,15 @@ class EnvironmentTest {
 		assertEquals(3, map.starts[1].y);
 	}
 	
+	//@Test
+	void testLoopingPoints() {
+		Environment map = new Environment(2, 2);
+		Position pos = new Position(1, 2);
+		Position pos2 = new Position(1, 2);
+		Position pos3 = new Position(1, 2);
+		assertEquals(1,map.isLoopingPoint(pos));
+		assertEquals(-1,map.isLoopingPoint(pos2));
+		assertEquals(2,map.isLoopingPoint(pos3));
+	}
 
 }

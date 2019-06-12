@@ -5,10 +5,10 @@ package norms;
  *
  */
 public class PerceptionState {
-char left;
-char front;
-char right;
-char back; 
+public char left;
+public char front;
+public char right;
+public char back; 
 	
 	public PerceptionState(char l, char f, char r, char b) {
 		this.left = l;
