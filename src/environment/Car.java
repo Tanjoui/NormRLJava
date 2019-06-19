@@ -1,12 +1,10 @@
 package environment;
 import norms.PerceptionState;
 /**
- * 
  * @author cadieux
  * Defines a Car object which is the agent of our simulation
  */
 public class Car {
-	//etat de la voiture
 	Position pos;
 	char direction;
 	Position nextmove; 
@@ -24,7 +22,11 @@ public class Car {
 	boolean done; //determine si la voiture a terminé son épisode
 	int score; //score obtenu à la fin d'un épisode
 
-	
+	/**
+	 * Constructor of a car
+	 * A car is built based on an environment, in order to give it an objective
+	 * @param map roundabout type Environment
+	 */
 	public Car(Environment map) {
 		//On determine les points de départ et de fin d'une voiture compris dans l'environement en paramètre
 		int obj = map.findRandomObjective();
@@ -39,7 +41,12 @@ public class Car {
 		this.score = 0;
 		this.shouldmove = true;
 	}
-	
+	/**
+	 * Alternative consturctor of a Car, where you can manually select the objective and start
+	 * @param map roundabout type Environment
+	 * @param objective Goal position to reach
+	 * @param start starting position of the car
+	 */
 	public Car(Environment map, int objective, int start) {
 		this.objective = objective;
 		this.start = start;
@@ -50,13 +57,24 @@ public class Car {
 		this.done = false;
 		this.score = 0;
 	}
+	/**
+	 * Getter of the perception state
+	 * @return PerceptionState corresponding to the current perception
+	 */
 	public PerceptionState getPerception() {
 		return this.perception;
 	}
+	/**
+	 * Determines if the position of the car corresponds to the objectives
+	 * @return true if the objective is reached
+	 */
 	public boolean arrived() {
 		return(this.objectivepos.x == this.pos.x && this.objectivepos.y == this.pos.y);
 	}
-	
+	/***
+	 * Sets the perception state of a car according to the simulation state
+	 * @param s Simulation where the car is evolving
+	 */
 	public void setPerception(Simulation s) {
 		//TODO
 		char DEFAULT = 'X';
@@ -68,7 +86,6 @@ public class Car {
 		int loop = s.map.isLoopingPoint(this.pos);
 		int x = this.pos.x;
 		int y = this.pos.y;
-		
 		if(direction == '^') {
 			if(loop == 1 && y != 0 && y!= road[0].length-1) {
 				back = road[x][y+1];
@@ -182,7 +199,9 @@ public class Car {
 		this.perception = new PerceptionState(left, front, right, back);
 		
 	}
-	
+	/**
+	 * 
+	 */
 	public String toString() {
 		return "Position:"
 				+ "\n direction "+this.pos.toString()

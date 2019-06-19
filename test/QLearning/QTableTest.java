@@ -13,7 +13,7 @@ class QTableTest {
 	@Test
 	void generate() {
 		Environment map = new Environment(3, 3);
-		QTable Q = new QTable(map);
+		QTable Q = new QTable(map, 1, 0.6);
 		
 	}
 	

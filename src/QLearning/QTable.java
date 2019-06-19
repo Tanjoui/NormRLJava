@@ -22,8 +22,8 @@ public class QTable {
 	State[] states;
 	int nbstates;
 	
-	public double alpha = 0.8 ;
-	public double gamma = 0.8 ;
+	public double alpha = 1 ;
+	public double gamma = 0.7 ;
 	//gamma 0 = better solution
 	//gamma 1 = faster solution
 	
@@ -39,12 +39,15 @@ public class QTable {
 	
 	
 	
-	public QTable(Environment map) {
+	public QTable(Environment map, double alpha, double gamma) {
 		nbstates = (map.exitsnumber*6)*(map.lanes+2)*(map.exitsnumber);
 		states = new State[nbstates];
 		int largeur = map.exitsnumber*6;
 		System.out.println("initialisation d'une table de "+nbstates+" etats");
 
+		this.alpha = alpha;
+		this.gamma = gamma;
+		
 		int c = 0;
 		while(c <nbstates) {
 			for(int o = 0; o<map.exitsnumber; o++) {//nombre d'objectifs possibles

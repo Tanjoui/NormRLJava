@@ -24,6 +24,7 @@ import norms.PerceptionState;
 public class Simulation {
 	//attributs globaux de la simulation
 	boolean debug;
+	boolean crashmode;
 	
 	int[] crash;
 	int[] reward;
@@ -49,11 +50,11 @@ public class Simulation {
 	 * @param exits nombre de sorties du rond point PREREQUIS: e>=2
 	 * @param cars nombre de voitures
 	 */
-	public Simulation(int nbepisodes, int lanes, int exits, int nbcars, boolean debug) {
+	public Simulation(int nbepisodes, int lanes, int exits, int nbcars, boolean debug, boolean c, double alpha, double gamma) {
 		this.crash = new int[nbepisodes];
 		this.reward = new int[nbepisodes];
 		this.episodemax = nbepisodes;
-		this.map = new Environment(lanes, exits);
+		this.map = new Environment(exits, lanes);
 		this.currentcrashes = 0;
 		this.step = 0;
 		this.episode = 0;
@@ -63,8 +64,8 @@ public class Simulation {
 			cars[i] = new Car(this.map);			
 		}
 		this.debug = debug;
-		qtable = new QTable(map);
-
+		qtable = new QTable(map, alpha, gamma);
+		this.crashmode = c;
 	}
 	
 	/**
@@ -82,6 +83,7 @@ public class Simulation {
 			step = 0; //reset the step for next episode 
 			reward[episode] = getTotalReward(); //registers the total reward of the episode
 			System.out.println(" reward = "+reward[episode]/cars.length);
+			
 			crash[episode] = currentcrashes;
 			currentcrashes = 0;
 			prepareCars(); //prepares the cars for a new episode
@@ -99,13 +101,14 @@ public class Simulation {
 
 
 	/**
-	 * Execution d'une étape de simulation
-	 * cette étape se produit en 3 parties:
-	 * 1) une phase de perception, où on determine si chaque voiture doit se déplacer
-	 * 2) phase de mouvement, chaque voiture effectue son mouvement selon le pathfinding établi par la Qtable
-	 * 3) phase d'évaluation, on évalue les crash et résulats des mouvements pour améliorer la simulation
+	* execution of a step of the Simulation
+	* it is composed in three parts
+	* 1) The perception phase
+	* 2) The movement phase
+	* 3) The evaluation phase
 	 */
 	private void step() {
+		
 		for (Car c : cars) {
 			if(c.placed == false && c.done == false) {
 				if(MapWithCars()[c.pos.x][c.pos.y] == '_') {
@@ -116,22 +119,24 @@ public class Simulation {
 		/**
 		 * Phase de perception 
 		 */
-		for (Car c : cars) {
-			c.setPerception(this); //on définit la perception actuelle de la voiture
-			if(normbase.Norms.isEmpty()) 
-				c.shouldmove = true;
-			else 
-				for (Norm n : normbase.Norms)  //si la perception de la voiture est présente dans la base
-					if	(n.getPerception().left == c.perception.left && n.getPerception().front == c.perception.front 
-						&& n.getPerception().right == c.perception.right && n.getPerception().back == c.perception.back && false){
-						if(n.randomMove()) {
-							c.shouldmove = true;
-							c.anormalmove = true;
+		if(crashmode) {
+			for (Car c : cars) {
+				c.setPerception(this); //on définit la perception actuelle de la voiture
+				if(normbase.Norms.isEmpty()) 
+					c.shouldmove = true;
+				else 
+					for (Norm n : normbase.Norms)  //si la perception de la voiture est présente dans la base
+						if	(n.getPerception().left == c.perception.left && n.getPerception().front == c.perception.front 
+							&& n.getPerception().right == c.perception.right && n.getPerception().back == c.perception.back && false){
+							if(n.randomMove()) {
+								c.shouldmove = true;
+								c.anormalmove = true;
+							}else 
+								System.out.println("arret");
+								c.shouldmove = false;
 						}else 
-							System.out.println("arret");
-							c.shouldmove = false;
-					}else 
-						c.shouldmove = true;
+							c.shouldmove = true;
+			}
 		}
 		/**
 		 * Phase de mouvement
@@ -149,28 +154,31 @@ public class Simulation {
 		/**
 		 * Phase d'évaluation
 		 */
-		currentcrashes += detectCrash();
+		if(crashmode)
+			currentcrashes += detectCrash();
+		
 		for (Car c : cars) 
-			if(c.crashed) { //la voiture s'est crashée
-				if(c.shouldmove) //la voiture a bougé
-					if(c.anormalmove) //la voiture a bougé mais elle n'aurait pas dû
+			if(crashmode)
+				if(c.crashed) { //la voiture s'est crashée
+					if(c.shouldmove) //la voiture a bougé
+						if(c.anormalmove) //la voiture a bougé mais elle n'aurait pas dû
+							if(normbase.findNorm(c.perception) != null) 
+								normbase.findNorm(c.perception).reinforce();
+							else 
+								normbase.addNorm(c.perception);
+						else 
+							if(normbase.findNorm(c.perception) != null) 
+								normbase.findNorm(c.perception).reevaluate();
+					else //la voiture n'a pas bougé
 						if(normbase.findNorm(c.perception) != null) 
 							normbase.findNorm(c.perception).reinforce();
 						else 
 							normbase.addNorm(c.perception);
-					else 
-						if(normbase.findNorm(c.perception) != null) 
-							normbase.findNorm(c.perception).reevaluate();
-				else //la voiture n'a pas bougé
-					if(normbase.findNorm(c.perception) != null) 
-						normbase.findNorm(c.perception).reinforce();
-					else 
-						normbase.addNorm(c.perception);
-				
-				c.crashed = false;
-			}else //la voiture n'a pas crash
-				if(c.anormalmove)  //la voiture a fait un mouvement hors des règles
-					normbase.findNorm(c.perception).reevaluate();
+					
+					c.crashed = false;
+				}else //la voiture n'a pas crash
+					if(c.anormalmove)  //la voiture a fait un mouvement hors des règles
+						normbase.findNorm(c.perception).reevaluate();
 						
 				
 			
@@ -196,6 +204,9 @@ public class Simulation {
 		}
 		
 	}
+	/**
+	 * Moves all the place cars of the simulation, and updates their values accordingly
+	 */
 	private void MoveAllcars() {
 		for (Car c : cars) {
 			if(c.placed) {
@@ -208,7 +219,11 @@ public class Simulation {
 			}
 		}
 	}
-
+	/**
+	 * Chooses and sets the best next move to a car according toit's current state
+	 * @param current state of the car
+	 * @param c car of the simulation
+	 */
 	public void setNextMove(State current, Car c) {
 		int Stateid = qtable.getIdOfState(current);
 		int Actionid = qtable.getBestAction(Stateid); //determine la meilleure action
@@ -227,9 +242,7 @@ public class Simulation {
 		c.score = c.score + qtable.R[Stateid][Actionid]; //mise à jour de la récompense
 	}
 	/**
-	 * replace tous les attributs des voitures à leurs valeurs initiales pour débuter un nouvel épisode dans les mêmes conditions que le précédent
-	 * -remet leur score à 0
-	 * -les repositionne
+	* replaces all the atributes of the cars in order to dtart a new episode
 	 */
 	private void prepareCars() {
 		for (Car c : cars) {
@@ -240,15 +253,18 @@ public class Simulation {
 			c.done = false;
 		}
 	}
-	
+	/**
+	 * @return true if there are no placed cars in the simulation
+	 */
 	private boolean nocarsleft() {
 		for (Car c : cars) 
 			if(c.placed == true) 
 				return false;
-			
 		return true;
 	}
-
+	/**
+	 * @return true if all the cars are in final state during the episode
+	 */
 	private boolean alldone() {
 	for (Car c : cars) 
 		if(c.done == false) 
@@ -259,6 +275,7 @@ public class Simulation {
 	
 	/**
 	 * Detects if crash happened at the current state of the environment
+	 * Also sets the values of the cars if they are involved during a crash
 	 * @return the number of crashes of current episode
 	 */
 	public int detectCrash() {
@@ -275,8 +292,8 @@ public class Simulation {
 	}
 	
 	/**
-	 * Permet d'obtenir l'état actuel de la carte, en comprenant les voitures présentes.
-	 * @return un tableau de caractère représentant l'état de la carte comprenant les voitures
+	 * Allows to get a two dimension char array corresponding to the current environment where the cars are placed
+	 * it will show where the cars are placed in the environment and their directions
 	 */
 	public char[][] MapWithCars() {
 		char[][] road = this.map.getRawRoad();
@@ -290,8 +307,8 @@ public class Simulation {
 		return road;
 	}
 	/**
-	 * permet d'afficher l'état d'une carte donnée
-	 * @param map carte pouvant être avec ou sans voitures
+	 * Allow to print the current state of an Environment where the cars are placed
+	 * @param map where the cars are present
 	 */
 	public void displayMap(char[][] map) {
 		for(int j = 0; j < map[0].length; j++) {
@@ -305,7 +322,7 @@ public class Simulation {
 	}
 	
 	/**
-	 * Récupère le score de chaque voiture de la simulation à un épisode donné donnée
+	 * Gets the score of all the cars present during the simulation
 	 * @return the global score at a certain simulation state
 	 */
 	public int getTotalReward() {
@@ -318,8 +335,10 @@ public class Simulation {
 
 	
 	/**
-	 * enregistre un diagramme du nombre de crash et du reward en fonction de l'épisode
-	 * Utilise l'API XChart
+	 * Saves diagrams according to the data of the simulation
+	 * Two charts will be saved:
+	 * A crash chart through the steps
+	 * An average reward chart through the steps
 	 * @throws IOException 
 	 */
 	public void displayGraph() throws IOException {
@@ -335,15 +354,19 @@ public class Simulation {
 			rewards[i] =reward[i]/nbcars;
 			totalrewards[i] = reward[i];
 		}
-		System.out.println("Creating reward and crash charts");
-		XYChart crashchart = QuickChart.getChart("Number of crashes by episode ("+map.lanes+" lanes,"
-				+ " "+map.exitsnumber+" exits, "+nbcars+" cars)", "episode", "crash number", "Number of crashes ", tab, crashes);
+		System.out.println("Creating rewards chart");
 		XYChart rewardchart = QuickChart.getChart("Average Reward by episode ("+map.lanes+" lanes, "
 				+ ""+map.exitsnumber+" exits, "+nbcars+" cars)", "episode", "reward", "Average reward ", tab, rewards);
-		new SwingWrapper(crashchart).displayChart();
 		new SwingWrapper(rewardchart).displayChart();
-		BitmapEncoder.saveBitmap(crashchart, "./Crashes", BitmapFormat.PNG);
 		BitmapEncoder.saveBitmap(rewardchart, "./Rewards", BitmapFormat.PNG);
-		System.out.println("PNGs generated");
+		
+		if(crashmode) {
+			System.out.println("Creating crash chart");
+			XYChart crashchart = QuickChart.getChart("Number of crashes by episode ("+map.lanes+" lanes,"
+					+ " "+map.exitsnumber+" exits, "+nbcars+" cars)", "episode", "crash number", "Number of crashes ", tab, crashes);
+			new SwingWrapper(crashchart).displayChart();
+			BitmapEncoder.saveBitmap(crashchart, "./Crashes", BitmapFormat.PNG);
+			System.out.println("PNGs generated");
+		}
 	}
 }

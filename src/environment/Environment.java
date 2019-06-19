@@ -1,9 +1,8 @@
 package environment;
 import java.util.Random;
 /**
- * 
  * @author cadieux
- * Defines a roundabout environment, this is generated from it's number of lanes and exits
+ * Defines a roundabout environment generated from it's number of lanes and exits
  */
 public class Environment {
 public int exitsnumber;
@@ -14,7 +13,10 @@ char[][] road;
 
 
 	/**
-	 * génère une map selon les paramètres donnés
+	 * Constructor of an Environment
+	 * Generates an Environment according to the paramaters given
+	 * @param e the number of exits
+	 * @param l the number of lanes
 	 */
 	public Environment(int e, int l) {
 		this.exitsnumber = e;
@@ -64,9 +66,9 @@ char[][] road;
 		}
 	
 	/**
-	 * @param posX
-	 * @param posY
-	 * @return -1 si not loop, 1 si loop gauche, 2 si loop droit
+	 * Tels if a position is located on a border of a road
+	 * @param pos Position to know
+	 * @return -1 if not loop, 1 if left border, 2 if right border
 	 */
 	public int isLoopingPoint(Position pos) {
 		if(pos.x == 0) {
@@ -77,7 +79,10 @@ char[][] road;
 		return -1;
 					
 	}
-
+	/**
+	 * Gets a two dimension char array corresponding to the state of the Environment without cars
+	 * @return a two dimensional char array
+	 */
 	public char[][] getRawRoad(){
 		char[][] road2 = new char[road.length][road[0].length];
 		for(int i = 0; i < road.length; i++) {
@@ -89,10 +94,14 @@ char[][] road;
 	}
 	
 
-	
+	/**
+	 * Allows to find an objective to a car according to the number of exits composing the Environment
+	 * @return a random objective included in the environment
+	 */
 	public int findRandomObjective() {
 		return (int)(Math.random() * this.exitsnumber);
 	}
+	
 	/**
 	 * trouve une ligne de départ aléatoire qui n'est pas sur la sortie en paramètre
 	 * @return un entier correspondant à un objectif
@@ -106,29 +115,43 @@ char[][] road;
 			}
 		}
 	}
-	
+	/**
+	 * @param n the id of the exit
+	 * @return the position of an exits
+	 */
 	public Position findPositionExit(int n) {
 		return exits[n];
 	}
+	/**
+	 * @param n the id of the starting point
+	 * @return the position of a starting point
+	 */
 	public Position findPositionStart(int n) {
 		return starts[n];
 	}
 
-	
+	/**
+	 * @param pos given position on the environment
+	 * @return
+	 */
 	public char getCase(Position pos) {
-		return road[pos.x][pos.y];
+		if(pos.x > this.exitsnumber*6 || pos.y > this.lanes+2) {
+			System.out.println("Error the position selected is not included in the environment");
+			return 'e';
+		}else {
+			return road[pos.x][pos.y];
+		}
 	}
 	
 
-	
+	/**
+	 * Prints the current environment on the console 
+	 */
 	public void display() {
 		for(int j = 0; j < road[0].length; j++) {
-			for(int i = 0; i < road.length; i++) {
-			
+			for(int i = 0; i < road.length; i++) 
 				System.out.print(road[i][j]);
-			}
 			System.out.println(' ');
-			
 		}
 	}
 
